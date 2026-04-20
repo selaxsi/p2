@@ -38,7 +38,9 @@ mux_2x1 ALU_B_mux(.a(rs2_val_in), .b(immediate), .s(ALUSrc), .f(ALU_in_B)); //rs
 ALU alu_(.A(ALU_in_A), .B(ALU_in_B), .ALUControl(ALUControl), .result(ALU_result_w), .zero(zero), .negative(negative) );
 
 //Branch and jump logic  -> || && ! single bit , | & ~ multibit
-mux_2x1 branch_jump_mux(.a(immediate), .b(ALU_result_w), .s(jalr), .f(jump_target_w));
+wire [31:0] PC_plus_imm;
+adder branch_adder(.a(PC_in), .b(immediate), .f(PC_plus_imm));
+mux_2x1 branch_jump_mux(.a(PC_plus_imm), .b(ALU_result_w), .s(jalr), .f(jump_target_w));
 assign condition_met = (bgef3)? (!negative || zero) : !zero;
 assign PCSel_w = ((branch && condition_met || jump));
 

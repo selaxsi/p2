@@ -32,8 +32,8 @@ module fetch_stage(clk, rst, PCSel, jump_target, PC_out, instruction_out);
         .instruction(instruction_w)
     );
 
-    IF_ID IFID(.clk(clk), .rst(rst), .PC_r(PC_w)
-    , .instr_r(instruction_w), .instr(instruction_out), .PC(PC_out) );
+    IF_ID IFID(.clk(clk), .rst(rst), .flush(PCSel), .PC_r(PC_w)
+        , .instr_r(instruction_w), .instr(instruction_out), .PC(PC_out) );
 
 endmodule
 
@@ -47,15 +47,20 @@ reg [7:0] memory [0:65535]; //64k x 1byte, enough for 16k instructions
 
 
 integer i;
- initial
- begin
-  $readmemb("program.txt", temp_mem); //need to divide each word into 4 bytes...
 
-  for ( i = 0; i<16383;i = i+1) begin
-    memory[i*4]   = temp_mem[i][7:0];   // Byte 0   little endian lsb at least address
-    memory[i*4+1] = temp_mem[i][15:8];  // Byte 1
-    memory[i*4+2] = temp_mem[i][23:16]; // Byte 2
-    memory[i*4+3] = temp_mem[i][31:24]; // Byte 3
+initial
+ begin
+  // fill everything with NOP first so uninitialized slots don't go X
+  for ( i = 0; i<16384; i = i+1)
+    temp_mem[i] = 32'h00001014; // NOP = addiw x0, x0, 0
+
+  $readmemb("program.txt", temp_mem);
+
+  for ( i = 0; i<16384; i = i+1) begin
+    memory[i*4]   = temp_mem[i][7:0];
+    memory[i*4+1] = temp_mem[i][15:8];
+    memory[i*4+2] = temp_mem[i][23:16];
+    memory[i*4+3] = temp_mem[i][31:24];
   end
  end
 
@@ -79,28 +84,24 @@ end
 
 endmodule
 
-
-module IF_ID(clk, rst, PC_r, instr_r, PC, instr);
-
-input wire clk, rst;
+module IF_ID(clk, rst, flush, PC_r, instr_r, PC, instr);
+input wire clk, rst, flush;
 input wire [31:0] PC_r , instr_r;
-
 output reg [31:0] instr, PC;
-
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-           
             PC <= 32'b0; 
-            instr <= 32'b0; 
+            instr <= 32'b0;
         end
-
+        else if (flush) begin   // flush: clear instruction but keep PC flow
+            PC <= PC_r;
+            instr <= 32'b0;     // insert NOP
+        end
         else begin
             PC <= PC_r;
             instr <= instr_r;
         end
     end
-
-
 endmodule
 
 
