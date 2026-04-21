@@ -5,7 +5,7 @@ module ID_tb;
 
     // Inputs to IF/ID & to decode stage
     reg clk;
-    reg rst;
+    reg rst, flush;
     reg regWrite_prev;
     reg [4:0] rd_in;
     reg [31:0] instruction_in;
@@ -29,7 +29,8 @@ module ID_tb;
         .clk(clk), .rst(rst), .PC_r(PC_in), .instr_r(instruction_in), .PC(PC_r), .instr(instruction_r)
     );
     decode_stage uut (
-        .clk(clk), .rst(rst), .regWrite_in(regWrite_prev), .rd_in(rd_in),
+        .clk(clk), .rst(rst), .flush(flush),
+        .regWrite_in(regWrite_prev), .rd_in(rd_in),
         .instruction_in(instruction_r), .PC_in(PC_r), .WB_result(WB_result),
         .instruction_out(instruction), .PC_out(PC), 
         .ALUSrc_out(ALUSrc), .memRead_out(memRead), .memWrite_out(memWrite), 
@@ -48,6 +49,7 @@ module ID_tb;
        
         clk = 0;
         rst = 1;
+        flush = 0;
                 
         instruction_in = 32'b0;
         PC_in = 32'h0000_0000;
@@ -76,8 +78,8 @@ module ID_tb;
 
         
         $display("--- Testing ANDI ---");
-        $display("Time: %t | Inst: %h | Imm: %d | rs1_val: %d |  RegWrite: %b", 
-                 $time, instruction, immediate, rs1_val, regWrite);
+        $display("Time: %t | Inst: %h | Imm: %d | rs1_val: %d |  RegWrite: %b, ALUControl = %b", 
+                 $time, instruction_in, immediate, rs1_val, regWrite, ALUControl);
 
         //  TEST A BNE INSTRUCTION ---
         // bne   x3, x5, l2    
@@ -85,8 +87,8 @@ module ID_tb;
         repeat (2) @(posedge clk); 
     
         $display("--- Testing BNE ---");
-        $display("Time: %t | Inst: %h | Branch: %b | Jump (jal or jalr): %b | rs2: %d", 
-                 $time, instruction, branch, jump, rs2);
+        $display("Time: %t | Inst: %h | Branch: %b | Jump (jal or jalr): %b | rs2: %d | bgef3 = %b,  ALUControl = %b", 
+                 $time, instruction_in, branch, jump, rs2, bgef3,  ALUControl);
 
         #20;
         $finish;

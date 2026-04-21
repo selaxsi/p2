@@ -4,7 +4,7 @@
 module EX_tb;
 
     // 1. Inputs to the ID_EX Pipeline Register (must be reg)
-    reg clk, rst;
+    reg clk, rst,flush;
     reg [31:0] PC, instruction;
     reg ALUSrc, memRead, memWrite, jalr, jump, branch, regWrite;
     reg [1:0] resultSrc;
@@ -21,10 +21,12 @@ module EX_tb;
     wire [31:0] immediate_r, rs1_val_r, rs2_val_r;
     wire bgef3_r;
     wire [4:0] rs1_r, rs2_r, rd_r;
+    wire PCSel_early;
+    wire [31:0] jump_target_early; //these two are outputs just from EX stage
 
 
     ID_EX pipe_reg (
-        .clk(clk), .rst(rst), 
+        .clk(clk), .rst(rst), .flush(flush),
         .PC_r(PC), .instruction_r(instruction),
         .ALUSrc_r(ALUSrc), .memRead_r(memRead), .memWrite_r(memWrite),
         .jalr_r(jalr), .jump_r(jump), .branch_r(branch), .regWrite_r(regWrite),
@@ -55,7 +57,8 @@ execute_stage EX (
     .ALU_result_out(ALU_result),  .jump_target_out(jump_target),  .instruction_out(instruction_ex), 
     .PC_out(PC_ex), .rs2_val_out(rs2_val_ex), .PCSel_out(PCSel), 
     .memRead_out(memRead_ex),   .memWrite_out(memWrite_ex),  .regWrite_out(regWrite_ex),  .resultSrc_out(resultSrc_ex), 
-    .rs1_out(rs1_ex),  .rs2_out(rs2_ex),  .rd_out(rd_ex)
+    .rs1_out(rs1_ex),  .rs2_out(rs2_ex),  .rd_out(rd_ex),
+    .PCSel_early_out(PCSel_early), .jump_target_early_out(jump_target_early)
 );
 
  
@@ -63,7 +66,7 @@ execute_stage EX (
 
     initial begin
         // Initialize everything
-        clk = 0; rst = 1;
+        clk = 0; rst = 1; flush = 0;
         PC = 0; instruction = 0;
         ALUSrc = 0; ALUControl = 0;
         rs1_val = 0; rs2_val = 0;
@@ -75,7 +78,7 @@ execute_stage EX (
         
         #10 rst = 0;
 
-        // Load values into ID/EX
+        // Test ADD: Load values into ID/EX
         @(negedge clk);
         ALUSrc = 1'b0;      // Select rs2_val
         ALUControl = 4'b0000; // add
@@ -86,10 +89,131 @@ execute_stage EX (
         repeat (2) @(posedge clk);
         
         #1; 
-        $display("--- Testing EX Stage ---");
+        $display("--- Testing Add ---");
         $display("Time: %t", $time);
         $display("in: rs1 val: %d, rs2 val: %d, ALUSrc: %b, Control: %b", rs1_val_r, rs2_val_r, ALUSrc_r, ALUControl_r);
         $display("out: ALU_Result: %d", ALU_result);
+
+
+
+                // Test BGE (condition is met): Load values into ID/EX
+        @(negedge clk);
+        ALUSrc = 1'b0;      // Select rs2_val
+        ALUControl = 4'b0001; // sub
+        PC = 32'd4;
+        immediate = 32'd12;
+        rs1_val = 32'd30;
+        rs2_val = 32'd20;
+        instruction = 32'h00000000;
+        bgef3 = 1;
+        branch = 1;
+        // 2 CC for first pipeline and 2nd pipeline register
+        repeat (2) @(posedge clk);
+        
+        #1; 
+        $display("--- Testing BGE (condition is met) ---");
+        $display("Time: %t", $time);
+        $display("in: rs1 val: %d, rs2 val: %d, ALUSrc: %b, Control: %b PC = %d, immediate = %d", rs1_val_r, rs2_val_r, ALUSrc_r, ALUControl_r, PC_r, immediate_r);
+        $display("out: ALU_Result %d, PCSel: %d", ALU_result, PCSel);
+
+
+
+                        // Test BGE (condition is NOT met): Load values into ID/EX
+        @(negedge clk);
+        ALUSrc = 1'b0;      // Select rs2_val
+        ALUControl = 4'b0001; // sub
+        rs1_val = 32'd10;
+        rs2_val = 32'd20;
+        instruction = 32'h00000000;
+        bgef3 = 1;
+        branch = 1;
+        // 2 CC for first pipeline and 2nd pipeline register
+        repeat (2) @(posedge clk);
+        
+        #1; 
+        $display("--- Testing BGE (condition not met) ---");
+        $display("Time: %t", $time);
+        $display("in: rs1 val: %d, rs2 val: %d, ALUSrc: %b, Control: %b", rs1_val_r, rs2_val_r, ALUSrc_r, ALUControl_r);
+        $display("out: ALU_Result %d, PCSel: %d", $signed(ALU_result), PCSel);
+
+
+
+                               // Test BNE (condition is met): Load values into ID/EX
+        @(negedge clk);
+        ALUSrc = 1'b0;      // Select rs2_val
+        ALUControl = 4'b0001; // sub
+               PC = 32'd4;
+        immediate = 32'd12;
+        rs1_val = 32'd30;
+        rs2_val = 32'd20;
+        instruction = 32'h00000000;
+        bgef3 = 0;
+        branch = 1;
+        // 2 CC for first pipeline and 2nd pipeline register
+        repeat (2) @(posedge clk);
+        
+        #1; 
+        $display("--- Testing BNE (condition not met) ---");
+        $display("Time: %t", $time);
+        $display("in: rs1 val: %d, rs2 val: %d, ALUSrc: %b, Control: %b, PC = %d, immediate = %d", rs1_val_r, rs2_val_r, ALUSrc_r, ALUControl_r, PC_r, immediate_r);
+        $display("out: ALU_Result %d, PCSel: %d, jump_target", $signed(ALU_result), PCSel, jump_target);
+
+
+    //TEST BNE
+                @(negedge clk);
+        ALUSrc = 1'b0;      // Select rs2_val
+        ALUControl = 4'b0001; // sub
+        rs1_val = 32'd30;
+        rs2_val = 32'd20;
+        instruction = 32'h00000000;
+        bgef3 = 0;
+        branch = 1;
+        // 2 CC for first pipeline and 2nd pipeline register
+        repeat (2) @(posedge clk);
+        
+        #1; 
+        $display("--- Testing BNE (condition not met) ---");
+        $display("Time: %t", $time);
+        $display("in: rs1 val: %d, rs2 val: %d, ALUSrc: %b, Control: %b", rs1_val_r, rs2_val_r, ALUSrc_r, ALUControl_r);
+        $display("out: ALU_Result %d, PCSel: %d", $signed(ALU_result), PCSel);
+
+    //TEST I type
+                @(negedge clk);
+        ALUSrc = 1'b1;      // Select immediate
+        ALUControl = 4'b0100; // OR
+        immediate = 32'd12;
+        rs1_val = 32'd0;
+        rs2_val = 32'b10;
+        instruction = 32'h00000000;
+        // 2 CC for first pipeline and 2nd pipeline register
+        repeat (2) @(posedge clk);
+        
+        #1; 
+        $display("--- Testing ori ---");
+        $display("Time: %t", $time);
+        $display("in: rs1 val: %d, ALUSrc: %b, Control: %b, immediate = %d", rs1_val_r, ALUSrc_r, ALUControl_r, immediate_r);
+        $display("out: ALU_Result %d", $signed(ALU_result));
+
+            //TEST jalr
+                @(negedge clk);
+        ALUSrc = 1'b1;      // Select immediate
+        ALUControl = 4'b0000; // Add
+        immediate = 32'd12;
+        rs1_val = 32'd10;
+        rs2_val = 32'd20;
+        instruction = 32'h00000000;
+        jump = 1;
+        jalr = 1;
+        // 2 CC for first pipeline and 2nd pipeline register
+        repeat (2) @(posedge clk);
+        
+        #1; 
+        $display("--- Testing jalr ---");
+        $display("Time: %t", $time);
+        $display("in: rs1 val: %d, ALUSrc: %b, Control: %b, PC = %d, immediate = %d", rs1_val_r, ALUSrc_r, ALUControl_r, PC_r, immediate_r);
+        $display("out: ALU_Result %d, PCSel: %d, jump_target", $signed(ALU_result), PCSel, jump_target);
+
+
 
         #10 $finish;
     end

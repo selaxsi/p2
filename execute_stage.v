@@ -26,23 +26,22 @@ module execute_stage(
 
 
 wire [31:0] ALU_in_A, ALU_in_B, ALU_result_w, jump_target_w;
-wire PCSel_w, zero, negative, condition_met, ALUSrc_jal;
+wire PCSel_w, zero, negative, condition_met;
 
 
 
 //ALU , Selection of operands for ALU
-assign ALUSrc_jal = (jump && !jalr); //to handle branch calculations in ALU, choose between rs1 as ALU input or PC as ALU input (only for jal)
 
-mux_2x1 ALU_A_mux(.a(rs1_val), .b(PC_in), .s(ALUSrc_jal), .f(ALU_in_A)); // rs1 vs PC for ALU input A
+assign ALU_in_A = rs1_val;
 mux_2x1 ALU_B_mux(.a(rs2_val_in), .b(immediate), .s(ALUSrc), .f(ALU_in_B)); //rs2 vs immediate for ALU input B
 ALU alu_(.A(ALU_in_A), .B(ALU_in_B), .ALUControl(ALUControl), .result(ALU_result_w), .zero(zero), .negative(negative) );
 
-//Branch and jump logic  -> || && ! single bit , | & ~ multibit
+//Branch and jump logic  
 wire [31:0] PC_plus_imm;
 adder branch_adder(.a(PC_in), .b(immediate), .f(PC_plus_imm));
 mux_2x1 branch_jump_mux(.a(PC_plus_imm), .b(ALU_result_w), .s(jalr), .f(jump_target_w));
 assign condition_met = (bgef3)? (!negative || zero) : !zero;
-assign PCSel_w = ((branch && condition_met || jump));
+assign PCSel_w = ((branch && condition_met) || jump);
 assign PCSel_early_out = PCSel_w; 
 assign jump_target_early_out = jump_target_w;
 
@@ -80,8 +79,9 @@ input [3:0] ALUControl;
 output [31:0] result;
 output zero, negative;
 
+
 assign result = (ALUControl == 4'd0)? A + B : 
-                (ALUControl == 4'd1)? A - B : 
+                (ALUControl == 4'd1)? $signed(A) - $signed(B) : 
                 (ALUControl == 4'd2)? A & B : 
                 (ALUControl == 4'd3)? A ^ B : 
                 (ALUControl == 4'd4)? A | B : 
@@ -89,8 +89,8 @@ assign result = (ALUControl == 4'd0)? A + B :
                 (ALUControl == 4'd6)? A >>> B: 
                 (A < B); //ALUControl = 7
 
-assign zero = (result == 0);
-assign negative = (result < 0);
+assign zero = (result == 32'b0);
+assign negative = result[31];
                 
 
 endmodule
