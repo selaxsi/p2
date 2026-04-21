@@ -10,9 +10,15 @@ module cpu(
 );
 
     wire PCSel_w;
+    wire PCSel_early_w;
     wire flush_w;
-    assign flush_w = PCSel_w;
     wire [31:0] jump_target_w;
+    wire [31:0] jump_target_early_w;
+
+    assign PCSel_w       = PCSel_early_w;
+    assign flush_w       = PCSel_early_w;
+    assign jump_target_w = jump_target_early_w;
+
     wire [31:0] PC_if_w;
     wire [31:0] instr_if_w;
 
@@ -25,18 +31,19 @@ module cpu(
         .instruction_out(instr_if_w)
     );
 
-    assign PC_fetch_out   = PC_if_w;
+    assign PC_fetch_out    = PC_if_w;
     assign instr_fetch_out = instr_if_w;
-    wire [31:0] PC_id_w;
-    wire [31:0] instr_id_w;
-    wire ALUSrc_id_w, memRead_id_w, memWrite_id_w, jalr_id_w, jump_id_w, branch_id_w, regWrite_id_w;
+
+    wire [31:0] PC_id_w, instr_id_w;
+    wire ALUSrc_id_w, memRead_id_w, memWrite_id_w;
+    wire jalr_id_w, jump_id_w, branch_id_w, regWrite_id_w;
     wire [1:0] resultSrc_id_w;
     wire [3:0] ALUControl_id_w;
     wire [31:0] immediate_id_w, rs1_val_id_w, rs2_val_id_w;
     wire bgef3_id_w;
     wire [4:0] rs1_id_w, rs2_id_w, rd_id_w;
 
-    // write-back path back into register file
+// write-back path back into register file
     wire regWrite_wb_w;
     wire [4:0] rd_wb_w;
     wire [31:0] WB_result_w;
@@ -71,11 +78,8 @@ module cpu(
         .rd_out(rd_id_w)
     );
 
-    wire [31:0] ALU_result_ex_w;
-    wire [31:0] jump_target_ex_w;
-    wire [31:0] instr_ex_w;
-    wire [31:0] PC_ex_w;
-    wire [31:0] rs2_val_ex_w;
+    wire [31:0] ALU_result_ex_w, jump_target_ex_w;
+    wire [31:0] instr_ex_w, PC_ex_w, rs2_val_ex_w;
     wire PCSel_ex_w;
     wire memRead_ex_w, memWrite_ex_w, regWrite_ex_w;
     wire [1:0] resultSrc_ex_w;
@@ -105,10 +109,12 @@ module cpu(
 
         .ALU_result_out(ALU_result_ex_w),
         .jump_target_out(jump_target_ex_w),
+        .jump_target_early_out(jump_target_early_w),
         .instruction_out(instr_ex_w),
         .PC_out(PC_ex_w),
         .rs2_val_out(rs2_val_ex_w),
         .PCSel_out(PCSel_ex_w),
+        .PCSel_early_out(PCSel_early_w),
         .memRead_out(memRead_ex_w),
         .memWrite_out(memWrite_ex_w),
         .regWrite_out(regWrite_ex_w),
@@ -117,13 +123,9 @@ module cpu(
         .rs2_out(rs2_ex_w),
         .rd_out(rd_ex_w)
     );
-
+    
     // connect branch/jump decision back to IF
-    assign PCSel_w = PCSel_ex_w;
-    assign jump_target_w = jump_target_ex_w;
-    wire [31:0] ALU_result_mem_w;
-    wire [31:0] mem_result_mem_w;
-    wire [31:0] PC_plus_4_mem_w;
+    wire [31:0] ALU_result_mem_w, mem_result_mem_w, PC_plus_4_mem_w;
     wire [1:0] resultSrc_mem_w;
     wire regWrite_mem_w;
     wire [4:0] rd_mem_w;
@@ -147,6 +149,7 @@ module cpu(
         .regWrite_out(regWrite_mem_w),
         .rd_out(rd_mem_w)
     );
+
 
     wb_stage WB_STAGE (
         .ALU_result_in(ALU_result_mem_w),

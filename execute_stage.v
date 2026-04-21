@@ -16,8 +16,8 @@ module execute_stage(
     input [1:0] resultSrc_in,
     input [4:0] rs1_in, rs2_in, rd_in,
 
-    output [31:0] ALU_result_out, jump_target_out, instruction_out, PC_out, rs2_val_out,
-    output PCSel_out, memRead_out, memWrite_out, regWrite_out,
+    output [31:0] ALU_result_out, jump_target_out, jump_target_early_out, instruction_out, PC_out, rs2_val_out,
+    output PCSel_out, PCSel_early_out, memRead_out, memWrite_out, regWrite_out,
     output [1:0] resultSrc_out,
     output [4:0] rs1_out, rs2_out, rd_out
 
@@ -43,7 +43,8 @@ adder branch_adder(.a(PC_in), .b(immediate), .f(PC_plus_imm));
 mux_2x1 branch_jump_mux(.a(PC_plus_imm), .b(ALU_result_w), .s(jalr), .f(jump_target_w));
 assign condition_met = (bgef3)? (!negative || zero) : !zero;
 assign PCSel_w = ((branch && condition_met || jump));
-
+assign PCSel_early_out = PCSel_w; 
+assign jump_target_early_out = jump_target_w;
 
 
 EX_MEM pipe_reg( 

@@ -25,11 +25,6 @@ wire [1:0] ALUOp, resultSrc_w, immSrc;
 wire [3:0] ALUControl_w;
 wire [31:0] immediate_w, rs1_val_w, rs2_val_w;
 wire [4:0] rs1_w, rs2_w, rd_w;
-reg flush_r;
-always @(posedge clk or posedge rst) begin
-    if (rst) flush_r <= 0;
-    else     flush_r <= flush;  // delay flush by 1 cycle for ID_EX
-end
 
 
 output [31:0] PC_out, instruction_out;
@@ -80,7 +75,7 @@ ALU_control ALUControl(
 );
 
 ID_EX pipe_reg (
-    .clk(clk), .rst(rst | flush_r), .PC_r(PC_in), .instruction_r(instruction_in),
+    .clk(clk), .rst(rst), .flush(flush), .PC_r(PC_in),
     .ALUSrc_r(ALUSrc_w), .memRead_r(memRead_w), .memWrite_r(memWrite_w),
     .jalr_r(jalr_w), .jump_r(jump_w), .branch_r(branch_w), .regWrite_r(regWrite_w),
     .resultSrc_r(resultSrc_w), .ALUControl_r(ALUControl_w), 
@@ -209,7 +204,7 @@ endmodule
 
 module ID_EX(
    PC_r, instruction_r,
-    clk, rst, ALUSrc_r, memRead_r, memWrite_r, jalr_r, jump_r, branch_r, regWrite_r,
+    clk, rst, flush, ALUSrc_r, memRead_r, memWrite_r, jalr_r, jump_r, branch_r, regWrite_r,
     resultSrc_r,  ALUControl_r, immediate_r, rs1_val_r, rs2_val_r, bgef3_r, 
     rs1_r, rs2_r, rd_r,
     instruction, PC,
@@ -220,7 +215,7 @@ module ID_EX(
 );
 
 input [31:0] PC_r, instruction_r;
-input clk, rst, ALUSrc_r, memRead_r, memWrite_r, jalr_r, jump_r, branch_r, regWrite_r;
+input clk, rst, flush, ALUSrc_r, memRead_r, memWrite_r, jalr_r, jump_r, branch_r, regWrite_r;
 input [1:0] resultSrc_r;
 input [3:0] ALUControl_r;
 input [31:0] immediate_r, rs1_val_r, rs2_val_r;
@@ -237,24 +232,21 @@ output reg [4:0] rs1, rs2, rd;
 
 always @(posedge clk or posedge rst) begin
         if (rst) begin
-            instruction <= 0;
-            PC <= 0;
-            ALUSrc <= 0;
-            memRead<= 0;
-            memWrite <= 0;
-            jalr <= 0;
-            jump <= 0;
-            branch <= 0;
-            regWrite <= 0;
-            resultSrc <= 0;
-            ALUControl <= 0;
-            immediate <= 0;
-            rs1_val <= 0;
-            rs2_val <= 0;
-            bgef3 <= 0;
-            rs1 <= 0;
-            rs2 <= 0;
-            rd <= 0;
+            instruction <= 0; PC <= 0;
+            ALUSrc <= 0; memRead <= 0; memWrite <= 0;
+            jalr <= 0; jump <= 0; branch <= 0; regWrite <= 0;
+            resultSrc <= 0; ALUControl <= 0;
+            immediate <= 0; rs1_val <= 0; rs2_val <= 0;
+            bgef3 <= 0; rs1 <= 0; rs2 <= 0; rd <= 0;
+        end
+
+        else if (flush) begin  
+            instruction <= 0; PC <= 0;
+            ALUSrc <= 0; memRead <= 0; memWrite <= 0;
+            jalr <= 0; jump <= 0; branch <= 0; regWrite <= 0;
+            resultSrc <= 0; ALUControl <= 0;
+            immediate <= 0; rs1_val <= 0; rs2_val <= 0;
+            bgef3 <= 0; rs1 <= 0; rs2 <= 0; rd <= 0;
         end
 
         else begin
