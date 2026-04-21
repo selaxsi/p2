@@ -79,14 +79,13 @@ input [3:0] ALUControl;
 output [31:0] result;
 output zero, negative;
 
-
 assign result = (ALUControl == 4'd0)? A + B : 
                 (ALUControl == 4'd1)? $signed(A) - $signed(B) : 
                 (ALUControl == 4'd2)? A & B : 
                 (ALUControl == 4'd3)? A ^ B : 
                 (ALUControl == 4'd4)? A | B : 
                 (ALUControl == 4'd5)?  A >> B: 
-                (ALUControl == 4'd6)? A >>> B: 
+                (ALUControl == 4'd6)? $signed($signed(A) >>> B) :
                 (A < B); //ALUControl = 7
 
 assign zero = (result == 32'b0);

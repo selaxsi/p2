@@ -213,6 +213,40 @@ execute_stage EX (
         $display("in: rs1 val: %d, ALUSrc: %b, Control: %b, PC = %d, immediate = %d", rs1_val_r, ALUSrc_r, ALUControl_r, PC_r, immediate_r);
         $display("out: ALU_Result %d, PCSel: %d, jump_target", $signed(ALU_result), PCSel, jump_target);
 
+                //TEST sra
+                @(negedge clk);
+        ALUSrc = 1'b0;      // Select rs2
+        ALUControl = 4'b0110; //shift right arithmetic (signed)
+        rs1_val = 32'hFFFFFFF6; // This is -10 in two's complement  (either this or rs1_val = -10 works but avoid -32'd10)
+        rs2_val = 32'd1; //should div by 2
+        instruction = 32'h00000000;
+        // 2 CC for first pipeline and 2nd pipeline register
+        repeat (2) @(posedge clk);
+        
+        #1; 
+        $display("--- Testing sra ---");
+        $display("Time: %t", $time);
+        $display("in: rs1 val: %d, rs2 val: %d, ALUSrc: %b, Control: %b", $signed(rs1_val_r), rs2_val_r, ALUSrc_r, ALUControl_r);
+        $display("out: ALU_Result %d", $signed(ALU_result));
+
+
+
+                        //TEST sltu
+                @(negedge clk);
+        ALUSrc = 1'b0;      // Select rs2
+        ALUControl = 4'b0111;
+        rs1_val = 32'hFFFFFFF6; // This is -10 in two's complement  (unsigned --> much larger than rs2_val)
+        rs2_val = 32'd100; 
+        instruction = 32'h00000000;
+        // 2 CC for first pipeline and 2nd pipeline register
+        repeat (2) @(posedge clk);
+        
+        #1; 
+        $display("--- Testing sra ---");
+        $display("Time: %t", $time);
+        $display("in: rs1 val: %d, rs2 val: %d, ALUSrc: %b, Control: %b", $signed(rs1_val_r), rs2_val_r, ALUSrc_r, ALUControl_r);
+        $display("out: ALU_Result %d", $signed(ALU_result));
+
 
 
         #10 $finish;
