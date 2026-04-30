@@ -10,11 +10,16 @@ module execute_stage(
     input clk, rst,
     input jalr, jump, branch, bgef3, ALUSrc,
     input [3:0] ALUControl,
-    input [31:0] immediate, rs1_val, rs2_val_in, 
-    input [31:0] instruction_in, PC_in,             
+    input [31:0] immediate, rs1_val, rs2_val_in,
+    input [31:0] instruction_in, PC_in,
     input memRead_in, memWrite_in, regWrite_in,
     input [1:0] resultSrc_in,
     input [4:0] rs1_in, rs2_in, rd_in,
+    // Forwarding inputs:
+    input [1:0]  forwardA,
+    input [1:0]  forwardB,
+    input [31:0] ALU_result_mem,
+    input [31:0] WB_result_wb,
 
     output [31:0] ALU_result_out, jump_target_out, jump_target_early_out, instruction_out, PC_out, rs2_val_out,
     output PCSel_out, PCSel_early_out, memRead_out, memWrite_out, regWrite_out,
@@ -26,14 +31,29 @@ module execute_stage(
 
 
 wire [31:0] ALU_in_A, ALU_in_B, ALU_result_w, jump_target_w;
+wire [31:0] rs2_val_forwarded;
 wire PCSel_w, zero, negative, condition_met;
 
+// 3-to-1 mux for ALU input A
+mux_3x1 fwd_A_mux(
+    .a(rs1_val),
+    .b(ALU_result_mem),
+    .c(WB_result_wb),
+    .s(forwardA),
+    .f(ALU_in_A)
+);
 
+// 3-to-1 mux for rs2 forwarding
+mux_3x1 fwd_B_mux(
+    .a(rs2_val_in),
+    .b(ALU_result_mem),
+    .c(WB_result_wb),
+    .s(forwardB),
+    .f(rs2_val_forwarded)
+);
 
 //ALU , Selection of operands for ALU
-
-assign ALU_in_A = rs1_val;
-mux_2x1 ALU_B_mux(.a(rs2_val_in), .b(immediate), .s(ALUSrc), .f(ALU_in_B)); //rs2 vs immediate for ALU input B
+mux_2x1 ALU_B_mux(.a(rs2_val_forwarded), .b(immediate), .s(ALUSrc), .f(ALU_in_B)); //rs2 vs immediate for ALU input B
 ALU alu_(.A(ALU_in_A), .B(ALU_in_B), .ALUControl(ALUControl), .result(ALU_result_w), .zero(zero), .negative(negative) );
 
 //Branch and jump logic  
@@ -57,7 +77,7 @@ EX_MEM pipe_reg(
     .memWrite_r(memWrite_in), 
     .regWrite_r(regWrite_in), 
     .resultSrc_r(resultSrc_in),
-    .rs1_r(rs1_in), .rs2_r(rs2_in), .rd_r(rd_in), .rs2_val_r(rs2_val_in),
+    .rs1_r(rs1_in), .rs2_r(rs2_in), .rd_r(rd_in), .rs2_val_r(rs2_val_forwarded),
     
     .ALU_result(ALU_result_out), .jump_target(jump_target_out), .instruction(instruction_out), 
     .PC(PC_out), .PCSel(PCSel_out), .memRead(memRead_out), .memWrite(memWrite_out), 
@@ -96,13 +116,13 @@ endmodule
 
 
 
-module EX_MEM( clk, rst,
-ALU_result_r, jump_target_r, instruction_r, PC_r,
- PCSel_r, memRead_r, memWrite_r, regWrite_r, resultSrc_r,
- rs1_r, rs2_r, rd_r, rs2_val_r,
- ALU_result, jump_target, instruction, PC,
- PCSel, memRead, memWrite, regWrite,
- resultSrc, rs1, rs2, rd, rs2_val
+module EX_MEM(clk, rst,
+    ALU_result_r, jump_target_r, instruction_r, PC_r,
+    PCSel_r, memRead_r, memWrite_r, regWrite_r, resultSrc_r,
+    rs1_r, rs2_r, rd_r, rs2_val_r,
+    ALU_result, jump_target, instruction, PC,
+    PCSel, memRead, memWrite, regWrite,
+    resultSrc, rs1, rs2, rd, rs2_val
 );
 input clk, rst;
 input [31:0] ALU_result_r, jump_target_r, instruction_r, PC_r, rs2_val_r;
@@ -116,54 +136,22 @@ output reg [1:0] resultSrc;
 output reg [4:0] rs1, rs2, rd;
 
 always @(posedge clk or posedge rst) begin
-        if (rst) begin
-            instruction <= 0;
-            PC <= 0;
-
-            memRead<= 0;
-            memWrite <= 0;
-
-            regWrite <= 0;
-            resultSrc <= 0;
-
-
-            rs2_val <= 0;
-            rs1 <= 0;
-            rs2 <= 0;
-            rd <= 0;
-
-            ALU_result <= 0;
-            jump_target <= 0;
-            PCSel <= 0;
-        end
-
-        else begin
-            instruction <= instruction_r;
-            PC <= PC_r;
-
-            memRead<= memRead_r;
-            memWrite <= memWrite_r;
-
-            regWrite <= regWrite_r;
-            resultSrc <= resultSrc_r;
-
-
-            rs2_val <= rs2_val_r;
-            rs1 <= rs1_r;
-            rs2 <= rs2_r;
-            rd <= rd_r;
-
-            ALU_result <= ALU_result_r;
-            jump_target <= jump_target_r;
-            PCSel <= PCSel_r;
-            
-        end
+    if (rst) begin
+        instruction <= 0; PC <= 0;
+        memRead <= 0; memWrite <= 0;
+        regWrite <= 0; resultSrc <= 0;
+        rs2_val <= 0; rs1 <= 0; rs2 <= 0; rd <= 0;
+        ALU_result <= 0; jump_target <= 0; PCSel <= 0;
     end
-
-
+    else begin
+        instruction <= instruction_r; PC <= PC_r;
+        memRead <= memRead_r; memWrite <= memWrite_r;
+        regWrite <= regWrite_r; resultSrc <= resultSrc_r;
+        rs2_val <= rs2_val_r; rs1 <= rs1_r; rs2 <= rs2_r; rd <= rd_r;
+        ALU_result <= ALU_result_r; jump_target <= jump_target_r;
+        PCSel <= PCSel_r;
+    end
+end
 
 endmodule
-
-
-
 

@@ -54,10 +54,12 @@ execute_stage EX (
     .instruction_in(instruction_r), .PC_in(PC_r),              
     .memRead_in(memRead_r),  .memWrite_in(memWrite_r), 
     .regWrite_in(regWrite_r), .resultSrc_in(resultSrc_r), .rs1_in(rs1_r),  .rs2_in(rs2_r),  .rd_in(rd_r),
-    .ALU_result_out(ALU_result),  .jump_target_out(jump_target),  .instruction_out(instruction_ex), 
-    .PC_out(PC_ex), .rs2_val_out(rs2_val_ex), .PCSel_out(PCSel), 
-    .memRead_out(memRead_ex),   .memWrite_out(memWrite_ex),  .regWrite_out(regWrite_ex),  .resultSrc_out(resultSrc_ex), 
-    .rs1_out(rs1_ex),  .rs2_out(rs2_ex),  .rd_out(rd_ex),
+    .forwardA(2'b00), .forwardB(2'b00),
+    .ALU_result_mem(32'd0), .WB_result_wb(32'd0),
+    .ALU_result_out(ALU_result), .jump_target_out(jump_target), .instruction_out(instruction_ex),
+    .PC_out(PC_ex), .rs2_val_out(rs2_val_ex), .PCSel_out(PCSel),
+    .memRead_out(memRead_ex), .memWrite_out(memWrite_ex), .regWrite_out(regWrite_ex),
+    .resultSrc_out(resultSrc_ex), .rs1_out(rs1_ex), .rs2_out(rs2_ex), .rd_out(rd_ex),
     .PCSel_early_out(PCSel_early), .jump_target_early_out(jump_target_early)
 );
 
