@@ -67,7 +67,7 @@ execute_stage EX (
     always #5 clk = ~clk;
 
     initial begin
-            $dumpfile("EX_tb.vcd");
+    $dumpfile("EX_tb.vcd");
     $dumpvars(0, EX_tb);
         // Initialize everything
         clk = 0; rst = 1; flush = 0;
