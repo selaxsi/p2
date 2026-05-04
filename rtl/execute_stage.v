@@ -8,7 +8,7 @@
 
 module execute_stage(
     input clk, rst,
-    input jalr, jump, branch, bgef3, ALUSrc,
+    input jalr, jump, branch_in, bgef3, ALUSrc,
     input [3:0] ALUControl,
     input [31:0] immediate, rs1_val, rs2_val_in,
     input [31:0] instruction_in, PC_in,
@@ -22,7 +22,7 @@ module execute_stage(
     input [31:0] WB_result_wb,
 
     output [31:0] ALU_result_out, jump_target_out, jump_target_early_out, instruction_out, PC_out, rs2_val_out,
-    output PCSel_out, PCSel_early_out, memRead_out, memWrite_out, regWrite_out,
+    output PCSel_out, PCSel_early_out, memRead_out, memWrite_out, regWrite_out, branch_out,
     output [1:0] resultSrc_out,
     output [4:0] rs1_out, rs2_out, rd_out
 
@@ -61,7 +61,7 @@ wire [31:0] PC_plus_imm;
 adder branch_adder(.a(PC_in), .b(immediate), .f(PC_plus_imm));
 mux_2x1 branch_jump_mux(.a(PC_plus_imm), .b(ALU_result_w), .s(jalr), .f(jump_target_w));
 assign condition_met = (bgef3)? (!negative || zero) : !zero;
-assign PCSel_w = ((branch && condition_met) || jump);
+assign PCSel_w = ((branch_in && condition_met) || jump);
 assign PCSel_early_out = PCSel_w; 
 assign jump_target_early_out = jump_target_w;
 
@@ -73,6 +73,7 @@ EX_MEM pipe_reg(
     .instruction_r(instruction_in),
     .PC_r(PC_in),                   
     .PCSel_r(PCSel_w), 
+    .branch_r(branch_in),
     .memRead_r(memRead_in), 
     .memWrite_r(memWrite_in), 
     .regWrite_r(regWrite_in), 
@@ -80,7 +81,7 @@ EX_MEM pipe_reg(
     .rs1_r(rs1_in), .rs2_r(rs2_in), .rd_r(rd_in), .rs2_val_r(rs2_val_forwarded),
     
     .ALU_result(ALU_result_out), .jump_target(jump_target_out), .instruction(instruction_out), 
-    .PC(PC_out), .PCSel(PCSel_out), .memRead(memRead_out), .memWrite(memWrite_out), 
+    .PC(PC_out), .PCSel(PCSel_out), .branch(branch_out), .memRead(memRead_out), .memWrite(memWrite_out), 
     .regWrite(regWrite_out), .resultSrc(resultSrc_out), .rs1(rs1_out), .rs2(rs2_out), 
     .rd(rd_out), .rs2_val(rs2_val_out)
 );
@@ -116,24 +117,18 @@ endmodule
 
 
 
-module EX_MEM(clk, rst,
-    ALU_result_r, jump_target_r, instruction_r, PC_r,
-    PCSel_r, memRead_r, memWrite_r, regWrite_r, resultSrc_r,
-    rs1_r, rs2_r, rd_r, rs2_val_r,
-    ALU_result, jump_target, instruction, PC,
-    PCSel, memRead, memWrite, regWrite,
-    resultSrc, rs1, rs2, rd, rs2_val
+module EX_MEM(
+input clk, rst,
+input [31:0] ALU_result_r, jump_target_r, instruction_r, PC_r, rs2_val_r,
+input PCSel_r, memRead_r, memWrite_r, regWrite_r, branch_r,
+input [1:0] resultSrc_r,
+input [4:0] rs1_r, rs2_r, rd_r,
+output reg [31:0] ALU_result, jump_target, instruction, PC, rs2_val,
+output reg PCSel, memRead, memWrite, regWrite, branch,
+output reg [1:0] resultSrc,
+output reg [4:0] rs1, rs2, rd
 );
-input clk, rst;
-input [31:0] ALU_result_r, jump_target_r, instruction_r, PC_r, rs2_val_r;
-input PCSel_r, memRead_r, memWrite_r, regWrite_r;
-input [1:0] resultSrc_r;
-input [4:0] rs1_r, rs2_r, rd_r;
 
-output reg [31:0] ALU_result, jump_target, instruction, PC, rs2_val;
-output reg PCSel, memRead, memWrite, regWrite;
-output reg [1:0] resultSrc;
-output reg [4:0] rs1, rs2, rd;
 
 always @(posedge clk or posedge rst) begin
     if (rst) begin
@@ -142,6 +137,7 @@ always @(posedge clk or posedge rst) begin
         regWrite <= 0; resultSrc <= 0;
         rs2_val <= 0; rs1 <= 0; rs2 <= 0; rd <= 0;
         ALU_result <= 0; jump_target <= 0; PCSel <= 0;
+        branch <=0;
     end
     else begin
         instruction <= instruction_r; PC <= PC_r;
@@ -150,6 +146,7 @@ always @(posedge clk or posedge rst) begin
         rs2_val <= rs2_val_r; rs1 <= rs1_r; rs2 <= rs2_r; rd <= rd_r;
         ALU_result <= ALU_result_r; jump_target <= jump_target_r;
         PCSel <= PCSel_r;
+        branch <= branch_r;
     end
 end
 

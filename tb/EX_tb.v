@@ -42,14 +42,14 @@ module EX_tb;
 
     // ex outputs
     wire [31:0] ALU_result, jump_target, instruction_ex, PC_ex, rs2_val_ex;
-    wire PCSel, memRead_ex, memWrite_ex, regWrite_ex;
+    wire PCSel, memRead_ex, memWrite_ex, regWrite_ex, branch_ex;
     wire [1:0] resultSrc_ex;
     wire [4:0] rs1_ex, rs2_ex, rd_ex;
 
 
 execute_stage EX (
     .clk(clk), .rst(rst),
-    .jalr(jalr_r),  .jump(jump_r),  .branch(branch_r), .bgef3(bgef3_r), 
+    .jalr(jalr_r),  .jump(jump_r),  .branch_in(branch_r), .bgef3(bgef3_r), 
     .ALUSrc(ALUSrc_r), .ALUControl(ALUControl_r), .immediate(immediate_r),  .rs1_val(rs1_val_r), .rs2_val_in(rs2_val_r),   
     .instruction_in(instruction_r), .PC_in(PC_r),              
     .memRead_in(memRead_r),  .memWrite_in(memWrite_r), 
@@ -60,7 +60,7 @@ execute_stage EX (
     .PC_out(PC_ex), .rs2_val_out(rs2_val_ex), .PCSel_out(PCSel),
     .memRead_out(memRead_ex), .memWrite_out(memWrite_ex), .regWrite_out(regWrite_ex),
     .resultSrc_out(resultSrc_ex), .rs1_out(rs1_ex), .rs2_out(rs2_ex), .rd_out(rd_ex),
-    .PCSel_early_out(PCSel_early), .jump_target_early_out(jump_target_early)
+    .PCSel_early_out(PCSel_early), .jump_target_early_out(jump_target_early), .branch_out(branch_ex)
 );
 
  
@@ -118,7 +118,7 @@ execute_stage EX (
         $display("--- Testing BGE (condition is met) ---");
         $display("Time: %t", $time);
         $display("in: rs1 val: %d, rs2 val: %d, ALUSrc: %b, Control: %b PC = %d, immediate = %d", rs1_val_r, rs2_val_r, ALUSrc_r, ALUControl_r, PC_r, immediate_r);
-        $display("out: ALU_Result %d, PCSel: %d", ALU_result, PCSel);
+        $display("out: ALU_Result %d, PCSel: %d, branch out %d", ALU_result, PCSel, branch_ex);
 
 
 
